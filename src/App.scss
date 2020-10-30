@@ -1,0 +1,23 @@
+
+@import "~bootstrap/scss/bootstrap";
+.App {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.history {
+  font-size: 10px;
+  color: blue;
+  position: relative;
+  top: 17px;
+  left: 5px;
+}
