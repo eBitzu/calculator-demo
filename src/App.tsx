@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "react-bootstrap";
 import "./App.scss";
+import { switchSign, toNumber, formatter } from "./utils/number.utils";
 
 enum Operators {
   PLUS = "+",
@@ -10,23 +11,24 @@ enum Operators {
   EQUAL = "=",
 }
 
+const buttons = ["9", "8", "7", "6", "5", "4", "3", "2", "1", "±", "0", ","];
+const operators: Operators[] = [
+  Operators.PLUS,
+  Operators.MINUS,
+  Operators.MULTIPLY,
+  Operators.DIVIDE,
+];
+
 function App() {
-  const buttons = ["9", "8", "7", "6", "5", "4", "3", "2", "1", "±", "0", ","];
-  const operators: Operators[] = [
-    Operators.PLUS,
-    Operators.MINUS,
-    Operators.MULTIPLY,
-    Operators.DIVIDE,
-  ];
-  const [result, setResult] = useState("0");
-  const [crtOperator, setCrtOperator]: [Operators, any] = useState(
+  const [result, setResult] = useState<string>("0");
+  const [crtOperator, setCrtOperator] = useState<Operators>(
     Operators.EQUAL
   );
-  const [operand, setOperand] = useState("");
-  const [lastOperand, setLastOperand] = useState("");
-  const [history, setHistory]: [string[], any] = useState([]);
+  const [operand, setOperand] = useState<string>("");
+  const [lastOperand, setLastOperand] = useState<string>("");
+  const [history, setHistory]= useState<Array<string>>([]);
 
-  const setComma = (val: string): string => {
+  const setComma = useCallback((val: string): string => {
     const number: number = +val;
     if (number % 1 !== 0) {
       return val;
@@ -35,18 +37,13 @@ function App() {
     history.pop();
     setHistory([...history, newValue]);
     return newValue;
-  };
+  }, [history]);
 
-  const switchSign = (val: string): string => {
-    const number: number = +val;
-    return `${number * -1}`;
-  };
-
-  const dictateWhere = (fn: Function) => {
+  const dictateWhere = useCallback((fn: Function) => {
     crtOperator !== Operators.EQUAL ? setOperand(fn(operand)) : setResult(fn(result));
-  };
+  }, [crtOperator, operand, result]);
 
-  const appendValue = (val: string) => {
+  const appendValue = useCallback((val: string) => {
     const lastIndex = history.length - 1;
     if(crtOperator !== Operators.EQUAL) {
       if(history[lastIndex] === operand) {
@@ -63,9 +60,15 @@ function App() {
     const newResult = `${result !== '0' ? result : ''}${val}`;
     setResult(newResult);
     setHistory([...history, newResult]);
-  }
+  }, [crtOperator, history, operand, result]);
 
-  const numberClicked = (ev: string) => {
+  const checkLastOperator = useCallback((): void => {
+    if(operators.includes(history[history.length - 1] as Operators)) {
+      history.pop();
+    }
+  }, [history]);
+
+  const numberClicked = useCallback((ev: string) => {
     switch (ev) {
       case ",":
         dictateWhere(setComma);
@@ -77,33 +80,9 @@ function App() {
         appendValue(ev);
         break;
     }
-  };
+  }, [appendValue, dictateWhere, setComma]);
 
-  const operatorClicked = (op: Operators) => {
-    if (op === Operators.EQUAL) {
-      operations(crtOperator, true);
-      return;
-    }
-    setCrtOperator(op);
-    checkLastOperator();
-    setHistory([...history, op]);
-    setLastOperand('');
-    if(operand) {
-      operations(crtOperator);
-    }
-  };
-
-  const toNumber = (val: string): number => {
-    const noDot = val.replace(/\./g, '');
-    return Number.parseFloat(noDot.replace(',', '.')) || +val;
-  }
-
-  const numberFormatter = new Intl.NumberFormat('ro-RO');
-  const formatter = (val: number): string => {
-    return numberFormatter.format(val);
-  }
-
-  const operations = (op: Operators, equal = false) => {
+  const operations = useCallback((op: Operators, equal = false) => {
     const existing = toNumber(result);
     const operandNumber = operand ? toNumber(operand) : +lastOperand;
     let newValue = existing;
@@ -132,13 +111,23 @@ function App() {
         setHistory([...history, op, lastOperand]);
       }
     }
-  };
+  }, [checkLastOperator, history, lastOperand, operand, result]);
 
-  const checkLastOperator = (): void => {
-    if(operators.includes(history[history.length - 1] as Operators)) {
-      history.pop();
+  const operatorClicked = useCallback((op: Operators) => {
+    if (op === Operators.EQUAL) {
+      operations(crtOperator, true);
+      return;
     }
-  }
+    setCrtOperator(op);
+    checkLastOperator();
+    setHistory([...history, op]);
+    setLastOperand('');
+    if(operand) {
+      operations(crtOperator);
+    }
+  }, [checkLastOperator, crtOperator, history, operand, operations]);
+
+
   const reset = () => {
     setResult('0');
     setOperand('');
@@ -148,7 +137,7 @@ function App() {
   }
 
   useEffect(() => {
-    function validateKey({key}: KeyboardEvent){
+    const validateKey = ({key}: KeyboardEvent) => {
       if(operators.includes(key as Operators)) {
         operatorClicked(key as Operators);
       }
@@ -171,7 +160,7 @@ function App() {
     return () => {
       window.removeEventListener('keyup', validateKey)
     }
-  })
+  }, [numberClicked, operatorClicked])
 
   const showOperand = crtOperator !== Operators.EQUAL && !!operand ? operand : result;
   return (
